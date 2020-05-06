@@ -12,6 +12,7 @@
 #![warn(missing_docs)]
 
 use std::{env, io, path::{PathBuf}, process, string};
+use thiserror::Error;
 
 /// Returns the Cargo manifest path of the surrounding crate.
 ///
@@ -30,39 +31,27 @@ pub fn locate_manifest() -> Result<PathBuf, LocateManifestError> {
 }
 
 /// Errors that can occur while retrieving the cargo manifest path.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum LocateManifestError {
     /// An I/O error that occurred while trying to execute `cargo locate-project`.
-    Io(io::Error),
+    #[error("An I/O error occurred while trying to execute `cargo locate-project`: {0}")]
+    Io(#[from] io::Error),
     /// The command `cargo locate-project` did not exit successfully.
+    #[error("The command `cargo locate-project` did not exit successfully.\n\
+        Stderr: {}", String::from_utf8_lossy(.stderr))]
     CargoExecution{
         /// The standard error output of `cargo locate-project`.
         stderr: Vec<u8>,
     },
     /// The output of `cargo locate-project` was not valid UTF-8.
-    StringConversion(string::FromUtf8Error),
+    #[error("The output of `cargo locate-project` was not valid UTF-8: {0}")]
+    StringConversion(#[from] string::FromUtf8Error),
     /// An error occurred while parsing the output of `cargo locate-project` as JSON.
-    ParseJson(json::Error),
+    #[error("The output of `cargo locate-project` was not valid JSON: {0}")]
+    ParseJson(#[from] json::Error),
     /// The JSON output of `cargo locate-project` did not contain the expected "root" string.
+    #[error("The JSON output of `cargo locate-project` did not contain the expected \"root\" string.")]
     NoRoot,
-}
-
-impl From<io::Error> for LocateManifestError {
-    fn from(err: io::Error) -> Self {
-        LocateManifestError::Io(err)
-    }
-}
-
-impl From<string::FromUtf8Error> for LocateManifestError {
-    fn from(err: string::FromUtf8Error) -> Self {
-        LocateManifestError::StringConversion(err)
-    }
-}
-
-impl From<json::Error> for LocateManifestError {
-    fn from(err: json::Error) -> Self {
-        LocateManifestError::ParseJson(err)
-    }
 }
 
 #[test]
