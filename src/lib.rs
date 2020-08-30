@@ -1,7 +1,7 @@
 //! Retrieves the Cargo manifest path by parsing the output of `cargo locate-project`.
 //!
 //! Example:
-//! 
+//!
 //! ```
 //! use locate_cargo_manifest::locate_manifest;
 //!
@@ -18,9 +18,13 @@ use std::{convert, env, fmt, io, path::PathBuf, process, string};
 /// The path is retrieved by parsing the output of `cargo locate-project`.
 pub fn locate_manifest() -> Result<PathBuf, LocateManifestError> {
     let cargo = env::var("CARGO").unwrap_or("cargo".to_owned());
-    let output = process::Command::new(cargo).arg("locate-project").output()?;
+    let output = process::Command::new(cargo)
+        .arg("locate-project")
+        .output()?;
     if !output.status.success() {
-        return Err(LocateManifestError::CargoExecution{ stderr: output.stderr});
+        return Err(LocateManifestError::CargoExecution {
+            stderr: output.stderr,
+        });
     }
 
     let output = String::from_utf8(output.stdout)?;
@@ -93,6 +97,11 @@ fn test_manifest_path() {
     use std::path::Path;
 
     let manifest_path = locate_manifest().expect("failed to retrieve cargo manifest path");
-    let manual_path = Path::new(file!()).parent().unwrap().join("../Cargo.toml").canonicalize().unwrap();
+    let manual_path = Path::new(file!())
+        .parent()
+        .unwrap()
+        .join("../Cargo.toml")
+        .canonicalize()
+        .unwrap();
     assert_eq!(manifest_path, manual_path);
 }
