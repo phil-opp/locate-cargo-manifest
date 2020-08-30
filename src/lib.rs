@@ -11,8 +11,7 @@
 
 #![warn(missing_docs)]
 
-use std::{env, io, path::{PathBuf}, process, string};
-use thiserror::Error;
+use std::{convert, env, fmt, io, path::PathBuf, process, string};
 
 /// Returns the Cargo manifest path of the surrounding crate.
 ///
@@ -31,27 +30,62 @@ pub fn locate_manifest() -> Result<PathBuf, LocateManifestError> {
 }
 
 /// Errors that can occur while retrieving the cargo manifest path.
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum LocateManifestError {
     /// An I/O error that occurred while trying to execute `cargo locate-project`.
-    #[error("An I/O error occurred while trying to execute `cargo locate-project`: {0}")]
-    Io(#[from] io::Error),
+    Io(io::Error),
     /// The command `cargo locate-project` did not exit successfully.
-    #[error("The command `cargo locate-project` did not exit successfully.\n\
-        Stderr: {}", String::from_utf8_lossy(.stderr))]
-    CargoExecution{
+    CargoExecution {
         /// The standard error output of `cargo locate-project`.
         stderr: Vec<u8>,
     },
     /// The output of `cargo locate-project` was not valid UTF-8.
-    #[error("The output of `cargo locate-project` was not valid UTF-8: {0}")]
-    StringConversion(#[from] string::FromUtf8Error),
+    StringConversion(string::FromUtf8Error),
     /// An error occurred while parsing the output of `cargo locate-project` as JSON.
-    #[error("The output of `cargo locate-project` was not valid JSON: {0}")]
-    ParseJson(#[from] json::Error),
+    ParseJson(json::Error),
     /// The JSON output of `cargo locate-project` did not contain the expected "root" string.
-    #[error("The JSON output of `cargo locate-project` did not contain the expected \"root\" string.")]
     NoRoot,
+}
+
+impl fmt::Display for LocateManifestError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LocateManifestError::Io(err) => {
+                write!(f, "An I/O error occurred while trying to execute `cargo locate-project`: {}", err)
+            }
+            LocateManifestError::CargoExecution { stderr } => {
+                write!(f, "The command `cargo locate-project` did not exit successfully.\n\
+                Stderr: {}", String::from_utf8_lossy(stderr))
+            }
+            LocateManifestError::StringConversion(err) => {
+                write!(f, "The output of `cargo locate-project` was not valid UTF-8: {}", err)
+            }
+            LocateManifestError::ParseJson(err) => {
+                write!(f, "The output of `cargo locate-project` was not valid JSON: {}", err)
+            }
+            LocateManifestError::NoRoot => {
+                write!(f, "The JSON output of `cargo locate-project` did not contain the expected \"root\" string.")
+            }
+        }
+    }
+}
+
+impl convert::From<io::Error> for LocateManifestError {
+    fn from(source: io::Error) -> Self {
+        LocateManifestError::Io(source)
+    }
+}
+
+impl convert::From<string::FromUtf8Error> for LocateManifestError {
+    fn from(source: string::FromUtf8Error) -> Self {
+        LocateManifestError::StringConversion(source)
+    }
+}
+
+impl convert::From<json::Error> for LocateManifestError {
+    fn from(source: json::Error) -> Self {
+        LocateManifestError::ParseJson(source)
+    }
 }
 
 #[test]
