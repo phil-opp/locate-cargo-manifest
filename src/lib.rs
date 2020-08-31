@@ -74,6 +74,18 @@ impl fmt::Display for LocateManifestError {
     }
 }
 
+impl std::error::Error for LocateManifestError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            LocateManifestError::Io(err) => Some(err),
+            LocateManifestError::CargoExecution { stderr: _ } => None,
+            LocateManifestError::StringConversion(err) => Some(err),
+            LocateManifestError::ParseJson(err) => Some(err),
+            LocateManifestError::NoRoot => None,
+        }
+    }
+}
+
 impl convert::From<io::Error> for LocateManifestError {
     fn from(source: io::Error) -> Self {
         LocateManifestError::Io(source)
